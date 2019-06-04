@@ -22,14 +22,14 @@ Add it to your puma config:
 
 ```ruby
 # config/puma.rb
-require 'puma/plugin/PumaPluginDogstastd'
+require 'puma/plugin/PumaPluginDogstatsd'
 
 bind "http://127.0.0.1:9292"
 
 workers 1
 threads 8, 16
 
-PumaPluginDogstastd.activate(self, an_instance_of_a_dogstatsd_client)
+PumaPluginDogstatsd.activate(self, an_instance_of_a_dogstatsd_client)
 ```
 
 ## Acknowledgements

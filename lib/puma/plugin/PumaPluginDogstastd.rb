@@ -4,7 +4,7 @@ require 'json'
 require 'puma'
 require 'puma/plugin'
 
-module PumaPluginDogstastd
+module PumaPluginDogstatsd
 
   KEY = :puma_plugin_datadog_statsd_client
 
@@ -13,7 +13,7 @@ module PumaPluginDogstastd
     raise "'datadog_statsd_client' should not be nil" if datadog_statsd_client.nil?
 
     puma_config.inject { @options[KEY] = datadog_statsd_client }
-    puma_config.plugin(:PumaPluginDogstastd)
+    puma_config.plugin(:PumaPluginDogstatsd)
   end
   module_function :activate
 
@@ -23,18 +23,18 @@ Puma::Plugin.create do
 
   def start(launcher)
     dogstatsd_client = get_dogstatsd_client(launcher)
-    raise 'PumaPluginDogstastd: Dogstatsd client not found' if dogstatsd_client.nil?
+    raise 'PumaPluginDogstatsd: Dogstatsd client not found' if dogstatsd_client.nil?
 
     clustered = launcher.send(:clustered?) # See https://github.com/puma/puma/blob/master/lib/puma/launcher.rb#L285
 
-    launcher.events.debug "PumaPluginDatadogStastd - enabled. Cluster mode: #{clustered}"
+    launcher.events.debug "PumaPluginDatadogStatsd - enabled. Cluster mode: #{clustered}"
 
     in_background do
       sleep 5
       loop do
         begin
           stats = Puma.stats
-          launcher.events.debug "PumaPluginDatadogStastd - notify stats: #{stats}"
+          launcher.events.debug "PumaPluginDatadogStatsd - notify stats: #{stats}"
 
           parsed_stats = JSON.parse(stats)
 
@@ -47,7 +47,7 @@ Puma::Plugin.create do
             s.gauge('puma.max_threads', count_value_for_key(clustered, parsed_stats, 'max_threads'), tags: tags)
           end
         rescue StandardError => e
-          launcher.events.error "PumaPluginDatadogStastd - notify stats failed:\n  #{e.to_s}\n  #{e.backtrace.join("\n    ")}"
+          launcher.events.error "PumaPluginDatadogStatsd - notify stats failed:\n  #{e.to_s}\n  #{e.backtrace.join("\n    ")}"
         ensure
           sleep 2
         end
@@ -76,7 +76,7 @@ Puma::Plugin.create do
   end
 
   def get_dogstatsd_client(launcher)
-    launcher.instance_variable_get(:@options)[PumaPluginDogstastd::KEY]
+    launcher.instance_variable_get(:@options)[PumaPluginDogstatsd::KEY]
   end
 
 end
