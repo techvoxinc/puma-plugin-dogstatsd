@@ -39,12 +39,12 @@ Puma::Plugin.create do
           parsed_stats = JSON.parse(stats)
 
           dogstatsd_client.batch do |s|
-            s.gauge('puma.workers', parsed_stats.fetch('workers', 1))
-            s.gauge('puma.booted_workers', parsed_stats.fetch('booted_workers', 1))
-            s.gauge('puma.running', count_value_for_key(clustered, parsed_stats, 'running'))
-            s.gauge('puma.backlog', count_value_for_key(clustered, parsed_stats, 'backlog'))
-            s.gauge('puma.pool_capacity', count_value_for_key(clustered, parsed_stats, 'pool_capacity'))
-            s.gauge('puma.max_threads', count_value_for_key(clustered, parsed_stats, 'max_threads'))
+            s.gauge('puma.workers', parsed_stats.fetch('workers', 1), tags: tags)
+            s.gauge('puma.booted_workers', parsed_stats.fetch('booted_workers', 1), tags: tags)
+            s.gauge('puma.running', count_value_for_key(clustered, parsed_stats, 'running'), tags: tags)
+            s.gauge('puma.backlog', count_value_for_key(clustered, parsed_stats, 'backlog'), tags: tags)
+            s.gauge('puma.pool_capacity', count_value_for_key(clustered, parsed_stats, 'pool_capacity'), tags: tags)
+            s.gauge('puma.max_threads', count_value_for_key(clustered, parsed_stats, 'max_threads'), tags: tags)
           end
         rescue StandardError => e
           launcher.events.error "PumaPluginDatadogStastd - notify stats failed:\n  #{e.to_s}\n  #{e.backtrace.join("\n    ")}"
@@ -56,6 +56,16 @@ Puma::Plugin.create do
   end
 
   private
+
+  def tags
+    tags = ["environment:#{Rails.env}"]    
+
+    if ENV.key?('ENVIRONMENT')
+      tags << "env:shopvox-#{ENV['ENVIRONMENT']}"
+    end
+
+    tags
+  end
 
   def count_value_for_key(clustered, stats, key)
     if clustered
