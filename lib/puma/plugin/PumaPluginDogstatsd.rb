@@ -64,6 +64,12 @@ Puma::Plugin.create do
       tags << "env:shopvox-#{ENV['ENVIRONMENT']}"
     end
 
+    hostname = `hostname`.strip
+
+    unless hostname.empty?
+      tags << "container_name:#{hostname}"
+    end
+
     tags
   end
 
