@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name     = "puma-plugin-dogstatsd"
-  spec.version  = "0.0.10"
+  spec.version  = "0.0.20"
   spec.author   = ""
   spec.email    = "steve@shopvox.com"
 
@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.files = Dir["lib/**/*.rb", "README.md", "MIT-LICENSE"]
 
-  spec.add_runtime_dependency "puma", ">= 3.12"
+  spec.add_runtime_dependency "puma", ">= 6.0", "< 8"
   spec.add_runtime_dependency "json"
 
   spec.add_development_dependency "bundler"

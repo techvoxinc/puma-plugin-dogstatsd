@@ -22,19 +22,22 @@ end
 Puma::Plugin.create do
 
   def start(launcher)
-    dogstatsd_client = get_dogstatsd_client(launcher)
+    @launcher = launcher
+    @log_writer = @launcher.log_writer
+
+    dogstatsd_client = get_dogstatsd_client(@launcher)
     raise 'PumaPluginDogstatsd: Dogstatsd client not found' if dogstatsd_client.nil?
 
-    clustered = launcher.send(:clustered?) # See https://github.com/puma/puma/blob/master/lib/puma/launcher.rb#L285
+    clustered = @launcher.send(:clustered?) # See https://github.com/puma/puma/blob/master/lib/puma/launcher.rb#L285
 
-    launcher.events.debug "PumaPluginDatadogStatsd - enabled. Cluster mode: #{clustered}"
+    @log_writer.debug "PumaPluginDatadogStatsd - enabled. Cluster mode: #{clustered}"
 
     in_background do
       sleep 5
       loop do
         begin
           stats = Puma.stats
-          launcher.events.debug "PumaPluginDatadogStatsd - notify stats: #{stats}"
+          @log_writer.debug "PumaPluginDatadogStatsd - notify stats: #{stats}"
 
           parsed_stats = JSON.parse(stats)
 
@@ -47,7 +50,7 @@ Puma::Plugin.create do
             s.gauge('puma.max_threads', count_value_for_key(clustered, parsed_stats, 'max_threads'), tags: tags)
           end
         rescue StandardError => e
-          launcher.events.error "PumaPluginDatadogStatsd - notify stats failed:\n  #{e.to_s}\n  #{e.backtrace.join("\n    ")}"
+          @log_writer.error "PumaPluginDatadogStatsd - notify stats failed:\n  #{e.to_s}\n  #{e.backtrace.join("\n    ")}"
         ensure
           sleep 2
         end
@@ -64,13 +67,44 @@ Puma::Plugin.create do
       tags << "env:shopvox-#{ENV['ENVIRONMENT']}"
     end
 
+    if ENV.has_key?("STATSD_GROUPING")
+      tags << "grouping:#{ENV['STATSD_GROUPING']}"
+    end
+
+    # Standardised datadog tag attributes, so that we can share the metric
+    # tags with the application running
+    #
+    # https://docs.datadoghq.com/agent/docker/?tab=standard#global-options
+    #
+    if ENV.has_key?("DD_TAGS")
+      ENV["DD_TAGS"].split(/\s+|,/).each do |t|
+        tags << t
+      end
+    end
+
+    # Support the Unified Service Tagging from Datadog, so that we can share
+    # the metric tags with the application running
+    #
+    # https://docs.datadoghq.com/getting_started/tagging/unified_service_tagging
+    if ENV.has_key?("DD_ENV")
+      tags << "env:#{ENV["DD_ENV"]}"
+    end
+
+    if ENV.has_key?("DD_SERVICE")
+      tags << "service:#{ENV["DD_SERVICE"]}"
+    end
+
+    if ENV.has_key?("DD_VERSION")
+      tags << "version:#{ENV["DD_VERSION"]}"
+    end
+
     hostname = `hostname`.strip
 
     unless hostname.empty?
       tags << "container_name:#{hostname}"
     end
 
-    tags
+    tags.join(",")
   end
 
   def count_value_for_key(clustered, stats, key)
