@@ -30,7 +30,7 @@ Puma::Plugin.create do
 
     clustered = @launcher.send(:clustered?) # See https://github.com/puma/puma/blob/master/lib/puma/launcher.rb#L285
 
-    @log_writer.debug "PumaPluginDatadogStatsd - enabled. Cluster mode: #{clustered}"
+    @log_writer.log "PumaPluginDatadogStatsd - enabled. Cluster mode: #{clustered}"
 
     in_background do
       sleep 5
