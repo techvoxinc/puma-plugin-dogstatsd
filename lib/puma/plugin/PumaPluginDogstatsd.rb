@@ -1,5 +1,6 @@
 # coding: utf-8, frozen_string_literal: true
 
+require 'net/http'
 require 'json'
 require 'puma'
 require 'puma/plugin'
@@ -98,10 +99,15 @@ Puma::Plugin.create do
       tags << "version:#{ENV["DD_VERSION"]}"
     end
 
-    hostname = `hostname`.strip
+    # Try to get the reliable Fargate container ID first
+    unique_id = get_ecs_container_id
 
-    unless hostname.empty?
-      tags << "container_name:#{hostname}"
+    # As a fallback, try the original hostname method
+    unique_id ||= `hostname`.strip
+
+    unless unique_id.to_s.strip.empty?
+      # Use a more descriptive tag key like 'container_id'
+      tags << "container_id:#{unique_id}"
     end
 
     tags.join(",")
@@ -119,4 +125,25 @@ Puma::Plugin.create do
     launcher.instance_variable_get(:@options)[PumaPluginDogstatsd::KEY]
   end
 
+  def get_ecs_container_id
+    # The V4 endpoint is recommended by AWS
+    metadata_uri_str = ENV['ECS_CONTAINER_METADATA_URI_V4']
+    return nil unless metadata_uri_str
+
+    begin
+      uri = URI(metadata_uri_str)
+      response = Net::HTTP.get(uri)
+      metadata = JSON.parse(response)
+
+      # The 'ContainerARN' provides a globally unique identifier.
+      # We can extract the short container ID from the end of the ARN for a cleaner tag.
+      # e.g., arn:aws:ecs:us-east-1:123456789012:task/my-cluster/abc.../def...
+      # The last part is the container's unique ID.
+      container_arn = metadata['ContainerARN']
+      return container_arn.split('/').last if container_arn&.include?('/')
+    rescue => e
+      @log_writer.error "PumaPluginDatadogStatsd - Unable to retrieve container metadata:\n  #{e.to_s}\n  #{e.backtrace.join("\n")}"
+      return nil
+    end
+  end
 end
