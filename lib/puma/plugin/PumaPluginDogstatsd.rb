@@ -110,7 +110,7 @@ Puma::Plugin.create do
       tags << "container_id:#{unique_id}"
     end
 
-    tags.join(",")
+    tags
   end
 
   def count_value_for_key(clustered, stats, key)
