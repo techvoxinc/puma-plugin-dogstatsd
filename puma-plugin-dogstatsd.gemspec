@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name     = "puma-plugin-dogstatsd"
-  spec.version  = "0.0.21"
+  spec.version  = "0.0.21.shopvox"
   spec.author   = ""
   spec.email    = "steve@shopvox.com"
 
